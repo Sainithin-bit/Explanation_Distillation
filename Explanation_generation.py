@@ -1,0 +1,734 @@
+import transformers
+import torch
+
+import pandas as pd
+import csv
+import re
+import json
+
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+
+
+
+model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+
+pipeline = transformers.pipeline(
+    "text-generation",
+    model=model_id,
+    model_kwargs={"torch_dtype": torch.bfloat16},
+    device_map="auto"
+)
+
+
+##############################DAAD ################################################
+
+
+with open('/scratch/sai/DAAD_LLAMA/videollama_daad_front_view.txt', 'r') as file:
+    file_content = file.read()
+    lines = file_content.strip().splitlines()
+
+current_video = None
+sentences = []
+video_responses = {}
+# Loop through the lines of the input data
+for line in lines:
+    line = line.strip()  # Remove leading/trailing whitespaces
+    if line.endswith(".mp4"):  # If the line is a video filename
+        if current_video and sentences:
+            # Store the previous video and its corresponding sentences in the dictionary
+            current_video = current_video.split('/')[-1]
+            video_responses[current_video] = sentences
+        
+        # Start a new video entry
+        current_video = line
+        sentences = []  # Reset the sentences list for the new video
+    elif line and current_video:  # If the line is a sentence and there's a current video
+        sentences.append(line)  # Add the sentence to the list
+
+import pdb;pdb.set_trace()
+classes = {0:'forward', 1:'slow down', 2:'left turn', 3:'left lane change', 4:'right turn', 5:'right lane change', 6:'u turn'}
+count = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
+count_1 = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
+count_2 = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
+global_count = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
+total = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
+
+import pandas as pd
+from collections import defaultdict
+import re 
+import json
+
+gd = pd.read_csv('/scratch/sai/DAAD_LLAMA/test.csv')
+d = defaultdict(list)
+caption_dict = dict()
+
+optical_flow = json.load(open('/scratch/sai/DAAD_LLAMA/optical_flow_output_daad.json', 'r'))
+lane_change = json.load(open('/scratch/sai/DAAD_LLAMA/lane_change_daad_patch.json', 'r'))
+narratives = json.load(open('/scratch/sai/DAAD_LLAMA/detections_daad.json', 'r'))
+
+groundtruth, predicted = [] ,  []
+ans='left turn'
+indx = 0
+
+for filename, response in video_responses.items():
+
+    if any(gd['filename']==filename):
+        print(filename)
+        flag = False
+        ans = classes[gd[gd['filename']==filename]['class'].to_list()[0]]
+    else:
+        continue
+    # if total[ans]>=50:
+    #     print(total)
+    #     continue
+    
+    new_rep = []
+    for res in response:
+        if ".txt" in res:
+            continue
+        else:  
+            res = re.sub(r'\d+: #C', '', res)
+            new_rep.append(res)
+
+    input_prompt = ''.join(new_rep)
+
+    filename = filename.split('/')[-1]
+    
+    
+    try:
+        if file_data[filename]==[]:
+           continue
+    except:
+        continue
+    
+    video_id = filename.split('.')[0]
+
+    try:
+        if lane_change[video_id]==[]:
+            continue
+    except:
+        continue
+
+    if indx>800:
+        break
+    indx+=1
+    ############################### Phase1 ######################################################
+    try:
+        if optical_flow[filename] and narratives[filename]:
+            messages_1 = [
+    {
+        "role": "system",
+        "content": """
+    You are an expert tasked with classifying driving maneuvers based on provided inputs.
+    Your goal is to classify the input_text into the correct driving maneuver.
+
+    Use the full context provided,  paying attention to direction, speed, and action verbs to select the most appropriate label. Be concise and only output the label.
+    Avoid unnecessary explanations or additional information. Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+"""
+    },
+    {
+        "role": "user",
+        "content": f"""
+    
+    Basic Instruction: Analyze the Frame-wise Lane Segmentation Context, Surrounding context and Video-wide Caption to classify the described driving maneuver.
+
+    Constraints:
+    - Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+    Task and Label Descriptions:
+    - 'forward': The vehicle continues moving forward without turning or changing lanes.
+    - 'slow down': The vehicle decelerates or prepares to stop.
+    - 'left turn': The vehicle turns sharply or significantly to the left.
+    - 'left lane change': The vehicle moves into the left lane.
+    - 'right turn': The vehicle turns sharply or significantly to the right.
+    - 'right lane change': The vehicle moves into the right lane.
+    - 'u turn': The vehicle makes a U-shaped turn.
+
+
+### Example 1
+
+**Context**  
+
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane lane lane lane lane road road road road road road road lane road road road road"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane others others others lane road lane lane lane lane lane lane lane lane road road lane lane lane lane lane lane lane lane lane road road road road road lane road road road road"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane road road road lane lane lane road road road road road lane road road road road"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane others others others road lane lane lane lane lane lane lane lane road road lane road lane lane lane lane road road lane road road road road road lane road road road"
+
+**Label** — left lane change
+
+---
+
+### Example 2
+
+**Context**  
+
+ "frame_60": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road others road road road road others others lane lane lane road road road road road road road road road lane road road road road road road road road road road road"
+ "frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road lane others lane others others others others lane lane lane road road lane lane lane lane lane lane road lane road road road road road road lane road road road road" 
+ "frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road lane lane lane others others others others lane lane lane road road lane lane road road road road road lane road road road road road lane lane road road road road"
+ "frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road lane others others others others others others others lane lane road road lane lane lane lane lane lane lane road road road road road road lane lane road road road road road"
+ "frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane road lane lane road road others others lane lane road lane lane road road road lane lane lane road road road road road lane lane road road road road lane lane"
+
+**Label** — right lane change
+
+---
+
+### Example 3
+
+**Context**
+
+"frame_60": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane road lane lane lane lane lane lane lane others others others others others road road road others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others"
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane others others lane lane lane lane lane lane lane lane lane lane lane road lane lane lane lane lane lane others others others others others lane lane lane others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane others others others lane lane lane lane lane lane lane lane lane lane road lane lane lane road lane road others others others others others lane road road others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others" 
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane others others others others lane lane lane lane lane lane lane lane lane lane lane lane lane lane lane road others others others others others lane road road others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others" 
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane others others others others lane lane lane lane lane lane lane lane lane road lane lane lane lane road road others others others others others road road lane others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others"
+
+**Label** — right lane change
+
+---
+
+Here is the multimodal input for the video:
+
+- **Frame-wise Lane Segmentation Context**  
+{lane_change[video_id]}
+
+
+- **Video-wide Caption**  
+{input_prompt}
+
+
+    ### Example 1
+
+    **Context**  
+
+    "frame_6": [["left", "left", "left", "left", "right", "right", "right", "right", "right"], ["left", "left", "left", "left", "left", "right", "right", "right", "left"], ["left", "left", "left", "left", "left", "right", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_7": [["left", "left", "left", "left", "right", "right", "right", "right", "right"], ["left", "left", "left", "left", "left", "right", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_8": [["left", "left", "left", "left", "right", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_9": [["left", "left", "left", "left", "right", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_10": [["left", "left", "left", "left", "right", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "right", "left", "left", "left", "left", "left", "left"], ["right", "right", "left", "left", "left", "left", "left", "left", "left"], ["right", "left", "right", "left", "left", "left", "left", "left", "left"]]
+
+    **Label** — left turn
+
+    ### Example 2
+
+    **Context**  
+
+    "frame_6": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "left"], ["right", "right", "right", "right", "left", "left", "left", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_7": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "left"], ["right", "right", "right", "right", "left", "left", "left", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_8": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "left"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_9": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_10": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "right", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]]
+
+    **Label** — left turn
+
+    ### Example 3
+
+    **Context**  
+
+    "frame_6": [["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_7": [["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_8": [["right", "right", "right", "left", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_9": [["right", "right", "right", "left", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_10": [["right", "right", "right", "left", "left", "left", "right", "right", "right"], ["right", "right", "right", "left", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]]
+
+    **Label** — right turn        
+
+    ### Example 4
+
+    **Context**  
+
+    "frame_6": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "right", "left", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"]], 
+    "frame_7": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "right", "left", "left"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"]], 
+    "frame_8": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"]], 
+    "frame_9": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "right", "left", "left", "left", "left"]], 
+    "frame_10": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "right", "left", "left", "left", "left"]]
+
+    **Label** — right turn        
+
+
+- **Optical Flow  Context**  
+{optical_flow[filename]}
+
+**Label** - 
+
+"""
+    }
+]        
+    except:
+        try:
+            if narratives[filename]:
+                messages_1 = [
+    {
+        "role": "system",
+        "content": """
+    You are an expert tasked with classifying driving maneuvers based on provided inputs.
+    Your goal is to classify the input_text into the correct driving maneuver.
+
+    Use the full context provided,  paying attention to direction, speed, and action verbs to select the most appropriate label. Be concise and only output the label.
+    Avoid unnecessary explanations or additional information. Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+"""
+    },
+    {
+        "role": "user",
+        "content": f"""
+
+    Basic Instruction: Analyze the Frame-wise Lane Segmentation Context and Video-wide Caption to classify the described driving maneuver.
+
+
+    Constraints:
+    - Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+
+    Task and Label Descriptions:
+    - 'forward': The vehicle continues moving forward without turning or changing lanes.
+    - 'slow down': The vehicle decelerates or prepares to stop.
+    - 'left turn': The vehicle turns sharply or significantly to the left.
+    - 'left lane change': The vehicle moves into the left lane.
+    - 'right turn': The vehicle turns sharply or significantly to the right.
+    - 'right lane change': The vehicle moves into the right lane.
+    - 'u turn': The vehicle makes a U-shaped turn.
+
+    
+### Example 1
+
+**Context**  
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane lane lane lane lane road road road road road road road lane road road road road"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane others others others lane road lane lane lane lane lane lane lane lane road road lane lane lane lane lane lane lane lane lane road road road road road lane road road road road"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane road road road lane lane lane road road road road road lane road road road road"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane others others others road lane lane lane lane lane lane lane lane road road lane road lane lane lane lane road road lane road road road road road lane road road road"
+
+**Label** — left lane change
+
+---
+
+### Example 2
+
+**Context**  
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane road lane lane others lane lane lane lane road road road lane lane road lane lane lane road road road road road road others others others others others"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane others lane lane lane lane road road lane lane road lane lane lane road road road road road road road others others others others others"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane others lane lane lane road road road lane lane road lane lane lane road road road road road road road others others others others others"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others lane lane lane road road lane road road road lane lane lane road road road road road road road others others others others others"
+
+**Label** — right lane change
+
+---
+
+### Example 3
+
+**Context**  
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others others lane road road lane lane road lane lane lane lane lane lane others others others others others others others others others others others others"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others others lane road road lane road lane lane lane lane lane lane lane others others others others others others others others others others others others"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others others lane road lane lane road lane lane lane lane lane lane lane others others others others others others others others others others others others"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane others others others road lane lane road road lane road lane lane lane lane lane others others others others others others others others others others others others"
+
+**Label** — right lane change
+
+---
+
+Here is the multimodal input for the video:
+
+- **Frame-wise Lane Segmentation Context**  
+{lane_change[video_id]}
+
+
+- **Video-wide Caption**  
+{input_prompt}
+  
+**Label** - 
+"""
+    }
+]
+
+        except:
+            messages_1 = [
+    {
+        "role": "system",
+        "content": """
+
+    You are an expert tasked with classifying driving maneuvers based on provided inputs.
+    Your goal is to classify the input_text into the correct driving maneuver.
+
+    Use the full context provided,  paying attention to direction, speed, and action verbs to select the most appropriate label. Be concise and only output the label.
+    Avoid unnecessary explanations or additional information. Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+"""
+    },
+    {
+        "role": "user",
+        "content": f"""
+
+
+    Basic Instruction: Analyze the Frame-wise Lane Segmentation Context and Video-wide Caption to classify the described driving maneuver.
+
+    Constraints:
+    - Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+
+    Task and Label Descriptions:
+    - 'forward': The vehicle continues moving forward without turning or changing lanes.
+    - 'slow down': The vehicle decelerates or prepares to stop.
+    - 'left turn': The vehicle turns sharply or significantly to the left.
+    - 'left lane change': The vehicle moves into the left lane.
+    - 'right turn': The vehicle turns sharply or significantly to the right.
+    - 'right lane change': The vehicle moves into the right lane.
+    - 'u turn': The vehicle makes a U-shaped turn.
+
+### Example 1
+
+**Context**  
+
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane lane lane lane lane road road road road road road road lane road road road road"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane others others others lane road lane lane lane lane lane lane lane lane road road lane lane lane lane lane lane lane lane lane road road road road road lane road road road road"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane road road road lane lane lane road road road road road lane road road road road"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane others others others road lane lane lane lane lane lane lane lane road road lane road lane lane lane lane road road lane road road road road road lane road road road"
+
+**Label** - left lane change
+
+---
+
+### Example 2
+
+**Context**  
+
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane road lane lane others lane lane lane lane road road road lane lane road lane lane lane road road road road road road others others others others others"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane others lane lane lane lane road road lane lane road lane lane lane road road road road road road road others others others others others"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane others lane lane lane road road road lane lane road lane lane lane road road road road road road road others others others others others"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others lane lane lane road road lane road road road lane lane lane road road road road road road road others others others others others"
+
+**Label**  — right lane change
+
+---
+
+### Example 3
+
+**Context**  
+
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others others lane road road lane lane road lane lane lane lane lane lane others others others others others others others others others others others others"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others others lane road road lane road lane lane lane lane lane lane lane others others others others others others others others others others others others"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane lane others others lane road lane lane road lane lane lane lane lane lane lane others others others others others others others others others others others others"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane lane lane others others others road lane lane road road lane road lane lane lane lane lane others others others others others others others others others others others others"
+
+**Label**  — right lane change
+
+---
+
+Here is the multimodal input for the video:
+
+- **Frame-wise Lane Segmentation Context**  
+{lane_change[video_id]}
+
+- **Video-wide Caption**  
+{input_prompt}
+
+
+**Label** - 
+"""
+    }
+]
+
+    #####################################Rephrashing###########################################################
+
+    
+    
+
+    outputs = pipeline(
+    messages_1,
+    max_new_tokens=256,
+    )
+
+    
+    if any(gd['filename']==filename):
+        ans = classes[gd[gd['filename']==filename]['class'].to_list()[0]]
+        flag = False
+        if ans in outputs[0]["generated_text"][-1]['content'].lower():
+            count[ans] += 1
+            flag = True
+            predicted.append(ans)
+            groundtruth.append(ans)
+            
+        else:
+            print(outputs[0]["generated_text"][-1]['content'].lower(), ans)
+            for ind, label in classes.items():
+                if label in outputs[0]["generated_text"][-1]['content'].lower():
+                    predicted.append(label)
+                    groundtruth.append(ans)
+        
+        temp = outputs[0]["generated_text"][-1]
+        d['filename'].append(filename) 
+        d['Predcited'].append(temp['content'])
+        d['Ground Truth'].append(ans)
+        d['Match'].append(flag)
+        
+
+    
+    ############################### Phase2 ######################################################
+    try:
+        if optical_flow[filename]:
+            messages_1 = [{
+"role": "system",
+"content": """
+    You are an expert tasked with classifying driving maneuvers based on provided inputs.
+    Your goal is to classify the input_text into the correct driving maneuver.
+
+    Use the full context provided,  paying attention to direction, speed, and action verbs to select the most appropriate label. Be concise and only output the label.
+    Avoid unnecessary explanations or additional information. Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+ """ },
+{ "role": "user",
+"content": f'''
+
+
+    Basic Instruction: Analyze the  video-wise captions and Optical Flow Context to classify the described driving maneuver.
+
+    Constraints:
+    - Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+
+    Task and Label Descriptions:
+    - 'forward': The vehicle continues moving forward without turning or changing lanes.
+    - 'slow down': The vehicle decelerates or prepares to stop.
+    - 'left turn': The vehicle turns sharply or significantly to the left.
+    - 'left lane change': The vehicle moves into the left lane.
+    - 'right turn': The vehicle turns sharply or significantly to the right.
+    - 'right lane change': The vehicle moves into the right lane.
+    - 'u turn': The vehicle makes a U-shaped turn.
+
+    video-wise captions: "{input_prompt}"
+
+
+    ### Example 1
+
+    **Context**  
+
+    "frame_6": [["left", "left", "left", "left", "right", "right", "right", "right", "right"], ["left", "left", "left", "left", "left", "right", "right", "right", "left"], ["left", "left", "left", "left", "left", "right", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_7": [["left", "left", "left", "left", "right", "right", "right", "right", "right"], ["left", "left", "left", "left", "left", "right", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_8": [["left", "left", "left", "left", "right", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_9": [["left", "left", "left", "left", "right", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"]], 
+    "frame_10": [["left", "left", "left", "left", "right", "left", "left", "left", "left"], ["left", "left", "left", "left", "left", "left", "left", "left", "left"], ["left", "left", "right", "left", "left", "left", "left", "left", "left"], ["right", "right", "left", "left", "left", "left", "left", "left", "left"], ["right", "left", "right", "left", "left", "left", "left", "left", "left"]]
+
+    **Label** — left turn
+
+    ### Example 2
+
+    **Context**  
+
+    "frame_6": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "left"], ["right", "right", "right", "right", "left", "left", "left", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_7": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "left"], ["right", "right", "right", "right", "left", "left", "left", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_8": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "left"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_9": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]], 
+    "frame_10": [["right", "right", "right", "right", "right", "right", "left", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "right", "left"], ["right", "right", "right", "right", "right", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"]]
+    
+    **Label** — left turn
+
+    ### Example 3
+
+    **Context**  
+
+    "frame_6": [["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_7": [["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_8": [["right", "right", "right", "left", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_9": [["right", "right", "right", "left", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]], 
+    "frame_10": [["right", "right", "right", "left", "left", "left", "right", "right", "right"], ["right", "right", "right", "left", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "left", "right", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "right"], ["right", "right", "right", "right", "right", "right", "left", "left", "left"]]
+
+    **Label** — right turn        
+
+    ### Example 4
+
+    **Context**  
+
+    "frame_6": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "right", "left", "right"], ["right", "right", "right", "right", "left", "left", "right", "right", "right"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"]], 
+    "frame_7": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "right", "left", "left"], ["right", "right", "right", "right", "right", "right", "right", "right", "right"]], 
+    "frame_8": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "right", "right", "right", "left", "left"]], 
+    "frame_9": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "left", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "right", "left", "left", "left", "left"]], 
+    "frame_10": [["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "left", "right", "left", "right", "right", "left", "left"], ["left", "left", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "left", "left", "left", "left", "left"], ["right", "right", "right", "right", "right", "left", "left", "left", "left"]]
+
+    **Label** — right turn        
+
+
+    Optical Flow Context: "{optical_flow[filename]}"
+
+    **Label** - 
+    
+'''
+}]
+
+    except:
+        print('#####################################################################################')
+        # import pdb;pdb.set_trace()
+        messages_1 = [{
+  "role": "system",
+  "content": """
+    You are an expert tasked with classifying driving maneuvers based on provided inputs.
+    Your goal is to classify the input_text into the correct driving maneuver.
+
+    Use the full context provided,  paying attention to direction, speed, and action verbs to select the most appropriate label. Be concise and only output the label.
+    Avoid unnecessary explanations or additional information. Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+  """
+},
+{
+  "role": "user",
+  "content": f'''
+
+    Basic Instruction: Analyze the video-wise captions to classify the described driving maneuver.
+    
+
+    Constraints:
+    - Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+
+    Task and Label Descriptions:
+    - 'forward': The vehicle continues moving forward without turning or changing lanes.
+    - 'slow down': The vehicle decelerates or prepares to stop.
+    - 'left turn': The vehicle turns sharply or significantly to the left.
+    - 'left lane change': The vehicle moves into the left lane.
+    - 'right turn': The vehicle turns sharply or significantly to the right.
+    - 'right lane change': The vehicle moves into the right lane.
+    - 'u turn': The vehicle makes a U-shaped turn.
+
+  video-wise captions: "{input_prompt}"
+
+  '''
+}]
+
+    if any(gd['filename']==filename):
+        flag = False
+        ans = classes[gd[gd['filename']==filename]['class'].to_list()[0]]
+        if ans in outputs[0]["generated_text"][-1]['content'].lower():
+            count_1[ans] += 1
+            flag = True
+            predicted.pop()
+            groundtruth.pop()
+            # caption_dict[filename] = caption_2
+            predicted.append(ans)
+            groundtruth.append(ans)
+
+        else:
+            print(outputs[0]["generated_text"][-1]['content'] , ans)
+        temp = outputs[0]["generated_text"][-1]
+        d['filename'].append(filename) 
+        d['Predcited'].append(temp['content'])
+        d['Ground Truth'].append(ans)
+        d['Match'].append(flag)
+        
+
+
+    ###################################### Phase 3 ######################################################
+    messages_1 = [
+        {
+        "role": "system",
+        "content": """
+    You are an expert tasked with classifying driving maneuvers based on provided inputs.
+    Your goal is to classify the input_text into the correct driving maneuver.
+
+    Use the full context provided,  paying attention to direction, speed, and action verbs to select the most appropriate label. Be concise and only output the label.
+    Avoid unnecessary explanations or additional information. Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+        """
+        },
+        {
+        "role": "user",
+        "content": f'''
+
+        Basic Instruction: Analyze the video-wise captions to classify the described driving maneuver.
+
+
+        Constraints:
+        - Only reply with one of the following labels: forward, slow down, left turn, left lane change, right turn, right lane change, u turn.
+
+
+        Task and Label Descriptions:
+        - 'forward': The vehicle continues moving forward without turning or changing lanes.
+        - 'slow down': The vehicle decelerates or prepares to stop.
+        - 'left turn': The vehicle turns sharply or significantly to the left.
+        - 'left lane change': The vehicle moves into the left lane.
+        - 'right turn': The vehicle turns sharply or significantly to the right.
+        - 'right lane change': The vehicle moves into the right lane.
+        - 'u turn': The vehicle makes a U-shaped turn.
+
+
+        video-wise captions: "{input_prompt}"
+        '''
+        }]
+
+
+
+    outputs = pipeline(
+    messages_1,
+    max_new_tokens=256,
+    )
+
+    if any(gd['filename']==filename):
+        flag = False
+        ans = classes[gd[gd['filename']==filename]['class'].to_list()[0]]
+        if ans in outputs[0]["generated_text"][-1]['content'].lower():
+            count_2[ans] += 1
+            flag = True
+            predicted.pop()
+            groundtruth.pop()
+            # caption_dict[filename] = caption_3
+            predicted.append(ans)
+            groundtruth.append(ans)
+        else:
+            print(outputs[0]["generated_text"][-1]['content'] , ans)
+        total[ans] += 1
+        temp = outputs[0]["generated_text"][-1]
+        d['filename'].append(filename) 
+        d['Predcited'].append(temp['content'])
+        d['Ground Truth'].append(ans)
+        d['Match'].append(flag)
+
+
+
+global_count['forward'] = max([count_1['forward'], count_2['forward']])
+global_count['left lane change'] =max([count_1['left lane change'], count['left lane change'], count_2['left lane change']]) 
+global_count['right lane change'] = max([count_1['right lane change'], count['right lane change'], count_2['right lane change']])
+global_count['left turn'] = count_1['left turn']
+global_count['right turn'] = count_1['right turn']
+
+df = pd.DataFrame(d)
+
+# Step 2: Save the DataFrame to a CSV file
+df.to_csv('output.csv', index=False)
+
+import json
+with open('captions_daad.json', 'w') as caption_file:
+    json.dump(caption_dict, caption_file, indent=4)
+
+
+
+class_names = ['forward', 'slow down', 'left turn', 'left lane change', 'right turn', 'right lane change', 'u turn' ]
+
+cm = confusion_matrix(groundtruth, predicted, labels=class_names)
+
+# Plot confusion matrix using seaborn heatmap
+plt.figure(figsize=(12,12))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+
+# Save the confusion matrix as an image file
+plt.savefig('confusion_matrix.png')  # Save as PNG
+plt.close()  # Close the plot
+
+
+
+acc = (sum(global_count.values()))/(sum(total.values()))
+print(total)
+print(count)
+print(count_1)
+print(count_2)
+print(acc)
+
+from sklearn.metrics import f1_score
+f1 = f1_score(groundtruth, predicted, average='weighted')
+
+print(f1)
+
+import pdb; pdb.set_trace()
+
+
+
+
