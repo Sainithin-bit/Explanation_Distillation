@@ -48,6 +48,31 @@ for line in lines:
     elif line and current_video:  # If the line is a sentence and there's a current video
         sentences.append(line)  # Add the sentence to the list
 
+
+# file_path = '/scratch/sai/LLAVA_DAAD_Front_view.txt'
+file_path = '/scratch/sai/DAAD_LLAMA/LLAVA_DAAD_Front_view.txt'
+# file_path = '/scratch/sai/output_brain4cars_llava.txt'
+
+
+file_data = defaultdict(list)
+file_id = None
+
+
+with open(file_path, 'r') as file:
+    file_content = file.read()
+    lines = file_content.strip().splitlines()
+    for line in lines:
+        line = line.strip()
+        
+        if '/home/egoexo_anno/front_view_frames' in line:  # Identify the file path (ID)
+            file_id = line.split('/')[-1] + '.mp4'
+            if file_id not in file_data:
+                file_data[file_id] = []  # Create a list to hold captions
+        elif line.startswith("<s>"):  # If line contains caption text
+            if file_id:
+                file_data[file_id].append('Frame caption :' + line)
+
+
 import pdb;pdb.set_trace()
 classes = {0:'forward', 1:'slow down', 2:'left turn', 3:'left lane change', 4:'right turn', 5:'right lane change', 6:'u turn'}
 count = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
@@ -195,6 +220,11 @@ Here is the multimodal input for the video:
 - **Frame-wise Lane Segmentation Context**  
 {lane_change[video_id]}
 
+- **surrounding Context**  
+{narratives[video_id]}
+
+- **Frame wise Caption**  
+{file_data[video_id]}
 
 - **Video-wide Caption**  
 {input_prompt}
@@ -334,6 +364,11 @@ Here is the multimodal input for the video:
 - **Frame-wise Lane Segmentation Context**  
 {lane_change[video_id]}
 
+- **surrounding Context**  
+{narratives[video_id]}
+
+- **Frame wise Caption**  
+{file_data[video_id]}
 
 - **Video-wide Caption**  
 {input_prompt}
@@ -419,6 +454,10 @@ Here is the multimodal input for the video:
 
 - **Frame-wise Lane Segmentation Context**  
 {lane_change[video_id]}
+
+- **Frame wise Caption**  
+{file_data[video_id]}
+
 
 - **Video-wide Caption**  
 {input_prompt}
