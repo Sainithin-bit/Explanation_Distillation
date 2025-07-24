@@ -1,8 +1,3 @@
-Great! Based on your instructions, here's a **clean and tailored `README.md`** for your project:
-
----
-
-````markdown
 # DriveXplain: Label and Explanation Generator
 
 This repository provides tools to automatically generate **labels** and **label + explanation pairs** from driving scene data. It is designed to support projects that involve classification, reasoning, or high-level understanding of driving behavior.
@@ -16,7 +11,7 @@ This repository provides tools to automatically generate **labels** and **label 
 ```bash
 git clone https://github.com/your-username/DriveXplain.git
 cd DriveXplain
-````
+```
 
 ### 2. Install Dependencies
 
