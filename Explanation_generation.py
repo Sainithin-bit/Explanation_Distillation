@@ -73,7 +73,6 @@ with open(file_path, 'r') as file:
                 file_data[file_id].append('Frame caption :' + line)
 
 
-import pdb;pdb.set_trace()
 classes = {0:'forward', 1:'slow down', 2:'left turn', 3:'left lane change', 4:'right turn', 5:'right lane change', 6:'u turn'}
 count = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
 count_1 = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
@@ -370,3 +369,295 @@ import pdb; pdb.set_trace()
 
 
 
+
+with open('/scratch/sai/videollama.txt', 'r') as file:
+    file_content = file.read()
+    lines = file_content.strip().splitlines()
+
+current_video = None
+sentences = []
+video_responses = {}
+# Loop through the lines of the input data
+for line in lines:
+    line = line.strip()  # Remove leading/trailing whitespaces
+    if line.endswith(".avi"):  # If the line is a video filename
+        if current_video and sentences:
+            # Store the previous video and its corresponding sentences in the dictionary
+            current_video = current_video.split('/')[-1]
+            video_responses[current_video] = sentences
+        
+        # Start a new video entry
+        current_video = line
+        sentences = []  # Reset the sentences list for the new video
+    elif line and current_video:  # If the line is a sentence and there's a current video
+        sentences.append(line)  # Add the sentence to the list
+
+optical_flow = json.load(open('/scratch/sai/optical_flow_output_b4c.json', 'r'))
+narratives = json.load(open('/scratch/sai/detections_centerTrack.json', 'r'))
+lane_change = json.load(open('/scratch/sai/HybridNets/lane_change_patch_latest.json', 'r'))
+
+# detections = []
+# with open('/scratch/sai/CenterTrack/src/detections.json', 'r') as f:
+#     for line in f:
+#         line = line.strip()
+#         import pdb;pdb.set_trace()
+#         if line:
+#             detections.append(json.loads(line))
+
+
+
+classes = {0:'right turn', 1:'right lane change', 2:'left turn', 3:'left lane change', 4:'forward'}
+global_count_1 = {'forward':0, 'left lane change':0, 'left turn':0, 'right lane change':0, 'right turn':0 }
+count_1 = {'forward':0, 'left lane change':0, 'left turn':0, 'right lane change':0, 'right turn':0 }
+count_2 = {'forward':0, 'left lane change':0, 'left turn':0, 'right lane change':0, 'right turn':0 }
+count_3 = {'forward':0, 'left lane change':0, 'left turn':0, 'right lane change':0, 'right turn':0 }
+total_1 = {'forward':0, 'left lane change':0, 'left turn':0, 'right lane change':0, 'right turn':0 }
+total_2 = {'forward':0, 'left lane change':0, 'left turn':0, 'right lane change':0, 'right turn':0 }
+total_3 = {'forward':0, 'left lane change':0, 'left turn':0, 'right lane change':0, 'right turn':0 }
+
+gd = pd.read_csv('/scratch/sai/brain4cars_data/train.csv')
+gd['filename']=gd['filename'].apply(lambda x: x.split('/')[-1])
+caption_file = open('captions.txt', 'w')
+
+captions = json.load(open('/scratch/sai/vlms/captions_llava_next_b4c.json', 'r'))
+
+
+
+
+#########################################Brain4Cars#################################################
+d = defaultdict(list)
+
+with open('/scratch/sai/BDD-Instruct-desc.json', 'r') as gt_file:
+    gt = json.load(gt_file)
+
+gt_ = {item['video_id']: item['QA']['q'] for item in gt}
+caption_dict = dict()
+
+predicted = []
+groundtruth = []
+global_set = set()
+
+for filename, response in video_responses.items():
+
+    new_rep = []
+    print(filename)
+    
+    for res in response:
+        if ".txt" in res:
+            continue
+        else:  
+            res = re.sub(r'\d+: #C', '', res)
+            new_rep.append(res)
+
+    input_prompt = ''.join(new_rep)
+
+    filename = filename.split('/')[-1]
+    video_id = filename.split('.')[0]
+
+    
+    try:
+        if file_data[filename]==[]:
+           continue
+    except:
+        continue
+    
+    try:
+        if lane_change[video_id]==[]:
+            continue
+    except:
+        continue
+    
+    # import pdb;pdb.set_trace()
+    try:
+        if optical_flow[filename] and narratives[filename]:
+            messages_1 = [
+    {
+        "role": "system",
+        "content": """
+  You are an expert tasked with classifying driving maneuvers based on provided inputs.
+  Your goal is to classify the input_text into the correct driving maneuver.
+
+  Use the full context provided,  paying attention to direction, speed, and action verbs to select the most appropriate label. Be concise and only output the label.
+  Avoid unnecessary explanations or additional information.
+"""
+    },
+    {
+        "role": "user",
+        "content": f"""
+
+    Basic Instruction: Analyze the Frame-wise Lane Segmentation Context, Surrounding context, Frame-wise Captions, video-wise captions and Frame-wise Lane Segmentation Context to classify the described driving maneuver.
+
+    Constraints: 
+    - Only reply with one of the following labels: right turn, right lane change, left turn, left lane change, forward
+
+
+    Task and Label Descriptions:
+    - 'right turn': The vehicle turns sharply or significantly to the right.
+    - 'right lane change': The vehicle moves into the right lane.
+    - 'left turn': The vehicle turns sharply or significantly to the left.
+    - 'left lane change': The vehicle moves into the left lane.
+    - 'forward': The vehicle completes a maneuver or comes to a stop (e.g., parking, stopping at a red light, or halting after a task).
+
+### Example 1
+
+**Context**
+  
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane lane lane lane lane road road road road road road road lane road road road road"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane others others others lane road lane lane lane lane lane lane lane lane road road lane lane lane lane lane lane lane lane lane road road road road road lane road road road road"
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane road road others others lane road lane lane lane lane lane road lane lane road road lane lane lane road road road lane lane lane road road road road road lane road road road road"
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane others others others road lane lane lane lane lane lane lane lane road road lane road lane lane lane lane road road lane road road road road road lane road road road"
+
+**Label** — left lane change
+
+---
+
+### Example 2
+
+**Context**
+  
+ "frame_60": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road others road road road road others others lane lane lane road road road road road road road road road lane road road road road road road road road road road road"
+ "frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road lane others lane others others others others lane lane lane road road lane lane lane lane lane lane road lane road road road road road road lane road road road road" 
+ "frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road lane lane lane others others others others lane lane lane road road lane lane road road road road road lane road road road road road lane lane road road road road"
+ "frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane road lane others others others others others others others lane lane road road lane lane lane lane lane lane lane road road road road road road lane lane road road road road road"
+ "frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane road lane lane road road others others lane lane road lane lane road road road lane lane lane road road road road road lane lane road road road road lane lane"
+**Label** — right lane change
+
+---
+
+### Example 3
+
+**Context**
+
+"frame_60": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane lane lane lane lane road lane lane lane lane lane lane lane others others others others others road road road others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others"
+"frame_80": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane others others lane lane lane lane lane lane lane lane lane lane lane road lane lane lane lane lane lane others others others others others lane lane lane others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others"
+"frame_100": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane others others others lane lane lane lane lane lane lane lane lane lane road lane lane lane road lane road others others others others others lane road road others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others" 
+"frame_120": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane others others others others lane lane lane lane lane lane lane lane lane lane lane lane lane lane lane road others others others others others lane road road others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others" 
+"frame_140": "others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others lane lane lane others others others others lane lane lane lane lane lane lane lane lane road lane lane lane lane road road others others others others others road road lane others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others others"
+
+**Label** — right lane change
+
+---
+
+Here is the multimodal input for the video:
+
+- **Frame-wise Lane Segmentation Context**  
+{lane_change[video_id]}
+
+- **Frame-wise Captions**  
+{file_data[filename]}
+
+- **Video-wide Caption**  
+{input_prompt}
+
+- **Surrounding context**  
+{narratives[filename]}
+
+
+
+### Example 1
+
+**Context**
+
+"frame_6": "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "right", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "right", "right", "right", "left", "left", "right", "right", "right", "right", "left", "left", "left", "left", "left", "right", "left", "right", "right", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "left", "right", "left", "left", "right", "left", "left", "left", "right", "left", "right", "right", "right", "right", "left", "left", "left", "right", "right", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "left", "left", "right", "right", "left", "left", "left", "left" 
+"frame_7": "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "left", "left", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "left", "left", "left", "right", "right", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "right", "left", "left", "left", "left", "left" 
+"frame_8": "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "left", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "left", "left", "right", "right", "right", "right", "right", "left", "left", "left", "left", "right", "right", "right", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "right", "right", "right", "right", "right", "left", "right", "right", "right", "left", "right", "right", "left", "left", "left", "right", "left", "right", "left", "right", "left"
+"frame_9": "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "right", "right", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "left", "left", "left", "left", "right", "right", "left", "left", "left", "left", "left", "left", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "left", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "right", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "right", "right", "left", "left", "right", "right", "right", "right", "right", "right", "left", "right", "right", "right", "right", "right", "left", "left", "left", "right", "left", "right", "left", "right", "left"
+"frame_10": "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "right", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "right", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "right", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "left", "right", "right", "left", "left", "left", "left", "left", "left", "left", "left", "right", "left", "left", "left", "right", "right", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "right", "right", "left", "left", "right", "right", "right", "right", "right", "left", "left", "right", "right", "right", "right", "right", "left", "left", "left", "right", "left", "right", "left", "right", "left"
+
+**Label** — right turn
+
+### Example 2
+
+**Context**  
+
+"frame_6": "right", "right", "right", "left", "right", "left", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "left", "left", "left", "left", "right", "right", "left", "right", "left", "right", "right", "right", "right", "right", "right", "left", "left", "right", "left", "right", "right", "right", "right", "right", "left", "right", "right", "right", "left", "right", "right", "left", "left", "left", "right", "right", "right", "left", "left", "left", "right", "right", "left", "right", "left", "left", "left", "left", "left", "right", "right", "left", "left", "left", "left", "right", "left", "right", "right", "right", "right", "right", "right", "right", "left", "right", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left"
+"frame_7": "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "right", "left", "left", "left", "right", "right", "right", "right", "left", "left", "right", "left", "left", "left", "right", "right", "left", "left", "right", "right", "right", "right", "left", "left", "left", "right", "right", "left", "left", "right", "left", "left", "right", "right", "right", "right", "left", "left", "right", "right", "right", "left", "right", "left", "left", "left", "right", "left", "left", "right", "left", "right", "right", "left", "left", "left", "left", "left", "right", "left", "right", "left", "left", "right", "left", "right", "right", "right", "right", "right", "right", "left", "right", "right", "right", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left"
+"frame_8": "right", "right", "right", "right", "left", "right", "left", "right", "left", "left", "left", "right", "left", "right", "right", "right", "right", "right", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "right", "right", "right", "right", "left", "left", "right", "left", "left", "right", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "right", "right", "left", "right", "right", "right", "right", "left", "left", "left", "right", "right", "right", "left", "left", "left", "right", "right", "left", "right", "right", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "left", "right", "right", "right", "left"
+"frame_9": "right", "right", "right", "right", "left", "right", "right", "right", "left", "left", "right", "right", "left", "left", "left", "right", "right", "left", "left", "left", "right", "left", "right", "left", "left", "right", "left", "left", "left", "right", "right", "left", "right", "left", "right", "right", "left", "right", "right", "left", "right", "left", "right", "right", "right", "right", "right", "left", "right", "right", "left", "right", "right", "left", "right", "left", "right", "right", "right", "right", "right", "left", "left", "right", "right", "right", "left", "right", "left", "left", "left", "left", "left", "right", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left", "left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "left", "left", "left", "left"
+"frame_10": "right", "right", "right", "right", "right", "right", "right", "right", "left", "right", "left", "left", "left", "right", "left", "right", "right", "right", "left", "left", "right", "right", "right", "right", "right", "right", "left", "left", "left", "right", "right", "left", "right", "left", "right", "right", "right", "right", "left", "left", "right", "left", "left", "right", "right", "right", "right", "left", "right", "left", "right", "right", "right", "left", "right", "left", "left", "right", "right", "right", "right", "left", "left", "right", "left", "left", "left", "left", "left", "left", "left", "left", "left", "right", "right", "left", "left", "left", "right", "right", "right", "right", "left", "left", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "left", "left", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "left", "left", "left", "left", "left", "right", "right", "right", "left", "left", "left", "left", "left", "left", "right", "right"
+
+**Label** — left turn
+
+
+- **Optical Flow  Context**  
+{optical_flow[filename]}
+
+
+"""
+    }
+]
+
+    outputs = pipeline(
+    messages_1,
+    max_new_tokens=256,
+    )
+
+    
+    if any(gd['filename']==filename):
+        ans = classes[gd[gd['filename']==filename]['class'].to_list()[0]]
+        flag = False
+        if outputs[0]["generated_text"][-1]['content'].lower() == ans:
+            count_1[ans] += 1
+            flag = True
+            global_set.add(filename)
+            
+        else:
+            print(outputs[0]["generated_text"][-1]['content'].lower(), ans)
+        
+        predicted.append(outputs[0]["generated_text"][-1]['content'].lower())
+        groundtruth.append(ans)
+        
+        temp = outputs[0]["generated_text"][-1]
+        d['filename'].append(filename) 
+        d['Predcited'].append(temp['content'])
+        d['Ground Truth'].append(ans)
+        d['Match'].append(flag)
+        total_1[ans] += 1
+        caption_file.write(f'''ground truth : {ans} , label : {temp}\n''')
+
+
+df = pd.DataFrame(d)
+
+
+
+# Step 2: Save the DataFrame to a CSV file
+df.to_csv('output.csv', index=False)
+
+
+
+with open('captions.json', 'w') as caption_file_json:
+    json.dump(caption_dict, caption_file_json, indent=4)
+
+
+class_names = ['forward', 'left lane change', 'left turn', 'right lane change', 'right turn']
+
+cm = confusion_matrix(groundtruth, predicted, labels=class_names)
+
+# Plot confusion matrix using seaborn heatmap
+plt.figure(figsize=(8,8))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+
+# Save the confusion matrix as an image file
+plt.savefig('confusion_matrix.png')  # Save as PNG
+plt.close()  # Close the plot
+
+
+global_count_1['forward'] = max([count_3['forward'], count_2['forward']])
+global_count_1['left lane change'] = max([count_1['left lane change'], count_2['left lane change'], count_3['left lane change']])
+global_count_1['right lane change'] = max([count_1['right lane change'], count_2['right lane change'], count_3['right lane change']])
+global_count_1['left turn'] = count_2['left turn']
+global_count_1['right turn'] = count_2['right turn']
+
+acc = (sum(global_count_1.values()))/(sum(total_3.values()))
+print(acc)
+from sklearn.metrics import f1_score
+f1 = f1_score(groundtruth, predicted, average='weighted')
+
+print(f1)
+
+import pdb; pdb.set_trace()
+
+######################################################AIDE Dataset ##################################
