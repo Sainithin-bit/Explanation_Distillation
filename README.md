@@ -72,7 +72,7 @@ Output files will be saved in the `output/` directory in JSON format:
 ```
 
 ---
-
+<!-- 
 ## 📌 Notes
 
 * Input data (e.g., images, optical flow, segmentations) should be placed in the `input/` directory or paths specified in the script configs.
@@ -84,7 +84,7 @@ Output files will be saved in the `output/` directory in JSON format:
 
 MIT License. See the `LICENSE` file for more details.
 
----
+--- -->
 
 ## 👨‍💻 Maintainer
 
