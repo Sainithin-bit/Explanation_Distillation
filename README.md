@@ -35,7 +35,7 @@ There are **two main scripts** you can run:
 ### 🔹 A. Run Explanation Classification (for label + explanation generation)
 
 ```bash
-python Explanation_Classification.py
+python DriveXplain_Classification.py
 ```
 
 * ✅ Generates labels and their corresponding explanations.
@@ -65,12 +65,12 @@ Output files will be saved in the `output/` directory in JSON format:
 
 ```json
 {
-  "frame_0123": {
+  "video_id": {
     "label": "left turn",
     "explanation": "The vehicle is turning left at the intersection due to the road layout."
   },
-  "frame_0124": {
-    "label": "straight",
+  "video_id": {
+    "label": "forward",
     "explanation": "The vehicle continues straight as there are no turns or obstructions."
   }
 }
@@ -94,8 +94,8 @@ MIT License. See the `LICENSE` file for more details.
 ## 👨‍💻 Maintainer
 
 **Sainithin Artham**
-📧 [sai.artham.19cse@bmu.edu.in](mailto:sainithin.artham@gmail.com)
-🔗 [LinkedIn](https://www.linkedin.com/in/sainithin-artham)
+📧 [sainithin.artham@gmail.com](mailto:sainithin.artham@gmail.com)
+
 
 ```
 
