@@ -352,7 +352,7 @@ plt.close()  # Close the plot
 
 
 
-acc = (sum(global_count.values()))/(sum(total.values()))
+acc = (sum(count_2.values()))/(sum(total.values()))
 print(total)
 print(count)
 print(count_1)
@@ -368,7 +368,7 @@ import pdb; pdb.set_trace()
 
 
 
-
+#########################################Brain4Cars#################################################
 
 with open('/scratch/sai/videollama.txt', 'r') as file:
     file_content = file.read()
@@ -424,7 +424,7 @@ captions = json.load(open('/scratch/sai/vlms/captions_llava_next_b4c.json', 'r')
 
 
 
-#########################################Brain4Cars#################################################
+
 d = defaultdict(list)
 
 with open('/scratch/sai/BDD-Instruct-desc.json', 'r') as gt_file:
