@@ -27,14 +27,14 @@ pip install -r requirements.txt
 
 There are **two main scripts** you can run:
 
-### 🔹 A. Run Explanation Classification (for label + explanation generation)
+### 🔹 A. Run `DriveXplain_Classification.py` (for only labels)
 
 ```bash
 python DriveXplain_Classification.py
 ```
 
-* ✅ Generates labels and their corresponding explanations.
-* ✅ Uses a classification-based approach (e.g., based on trajectories, motion, or semantic cues).
+* ✅ Generates labels.
+* ✅ Uses a classification-based prompt.
 
 ---
 
