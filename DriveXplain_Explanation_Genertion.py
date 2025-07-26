@@ -24,6 +24,29 @@ pipeline = transformers.pipeline(
 
 ##################################################DAAD################################
 
+with open('testing_set_inputs/DAAD_LLAMA/videollama_daad_front_view.txt', 'r') as file:
+    file_content = file.read()
+    lines = file_content.strip().splitlines()
+
+current_video = None
+sentences = []
+video_responses = {}
+# Loop through the lines of the input data
+for line in lines:
+    line = line.strip()  # Remove leading/trailing whitespaces
+    if line.endswith(".avi"):  # If the line is a video filename
+        if current_video and sentences:
+            # Store the previous video and its corresponding sentences in the dictionary
+            current_video = current_video.split('/')[-1]
+            video_responses[current_video] = sentences
+        
+        # Start a new video entry
+        current_video = line
+        sentences = []  # Reset the sentences list for the new video
+    elif line and current_video:  # If the line is a sentence and there's a current video
+        sentences.append(line)  # Add the sentence to the list
+
+
 
 classes = {0:'forward', 1:'slow down', 2:'left turn', 3:'left lane change', 4:'right turn', 5:'right lane change', 6:'u turn'}
 count = {'forward':0, 'slow down':0, 'left turn':0, 'left lane change':0, 'right turn':0, 'right lane change':0, 'u turn':0}
@@ -41,13 +64,37 @@ gd = pd.read_csv('/scratch/sai/train.csv')
 d = defaultdict(list)
 caption_dict = dict()
 
-optical_flow = json.load(open('/scratch/sai/DAAD_LLAMA/optical_flow_output_daad.json', 'r'))
-lane_change = json.load(open('/scratch/sai/DAAD_LLAMA/lane_change_daad_patch.json', 'r'))
-narratives = json.load(open('/scratch/sai/DAAD_LLAMA/detections_daad.json', 'r'))
+optical_flow = json.load(open('testing_set_inputs/DAAD_LLAMA/optical_flow_output_daad.json', 'r'))
+lane_change = json.load(open('testing_set_inputs/DAAD_LLAMA/lane_change_daad_patch.json', 'r'))
+narratives = json.load(open('testing_set_inputs/DAAD_LLAMA/detections_daad.json', 'r'))
 
 groundtruth, predicted = [] ,  []
 ans='left turn'
 indx = 0
+
+# file_path = '/scratch/sai/LLAVA_DAAD_Front_view.txt'
+file_path = 'testing_set_inputs/DAAD_LLAMA/LLAVA_DAAD_Front_view.txt'
+# file_path = '/scratch/sai/output_brain4cars_llava.txt'
+
+
+file_data = defaultdict(list)
+file_id = None
+
+
+with open(file_path, 'r') as file:
+    file_content = file.read()
+    lines = file_content.strip().splitlines()
+    for line in lines:
+        line = line.strip()
+        
+        if '/home/egoexo_anno/front_view_frames' in line:  # Identify the file path (ID)
+            file_id = line.split('/')[-1] + '.mp4'
+            if file_id not in file_data:
+                file_data[file_id] = []  # Create a list to hold captions
+        elif line.startswith("<s>"):  # If line contains caption text
+            if file_id:
+                file_data[file_id].append('Frame caption :' + line)
+
 
 
 for filename, response in video_responses.items():
@@ -357,7 +404,7 @@ import pdb; pdb.set_trace()
 ####################################################Barin4Cars##################################
 
 
-with open('/scratch/sai/videollama.txt', 'r') as file:
+with open('testing_set_inputs/B4c_LLAMA/videollama.txt', 'r') as file:
     file_content = file.read()
     lines = file_content.strip().splitlines()
 
@@ -379,9 +426,33 @@ for line in lines:
     elif line and current_video:  # If the line is a sentence and there's a current video
         sentences.append(line)  # Add the sentence to the list
 
-optical_flow = json.load(open('/scratch/sai/optical_flow_output_b4c.json', 'r'))
-narratives = json.load(open('/scratch/sai/detections_centerTrack.json', 'r'))
-lane_change = json.load(open('/scratch/sai/HybridNets/lane_change_patch_latest.json', 'r'))
+optical_flow = json.load(open('testing_set_inputs/B4c_LLAMA/optical_flow_output_b4c.json', 'r'))
+narratives = json.load(open('testing_set_inputs/B4c_LLAMA/detections_centerTrack.json', 'r'))
+lane_change = json.load(open('testing_set_inputs/B4c_LLAMA/lane_change_patch_latest.json', 'r'))
+
+# file_path = '/scratch/sai/LLAVA_DAAD_Front_view.txt'
+# file_path = '/scratch/sai/DAAD_LLAMA/LLAVA_DAAD_Front_view.txt'
+file_path = 'testing_set_inputs/B4c_LLAMA/output_brain4cars_llava.txt'
+
+
+file_data = defaultdict(list)
+file_id = None
+
+
+with open(file_path, 'r') as file:
+    file_content = file.read()
+    lines = file_content.strip().splitlines()
+    for line in lines:
+        line = line.strip()
+        
+        if '/home/egoexo_anno/front_view_frames' in line:  # Identify the file path (ID)
+            file_id = line.split('/')[-1] + '.mp4'
+            if file_id not in file_data:
+                file_data[file_id] = []  # Create a list to hold captions
+        elif line.startswith("<s>"):  # If line contains caption text
+            if file_id:
+                file_data[file_id].append('Frame caption :' + line)
+
 
 # detections = []
 # with open('/scratch/sai/CenterTrack/src/detections.json', 'r') as f:
@@ -634,7 +705,7 @@ for filename, response in video_responses.items():
     - **Optical Flow  Context**  
     {optical_flow[filename]}
 
-    
+
     Output:
     Label:
     Explanation1:
