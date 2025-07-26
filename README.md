@@ -13,12 +13,13 @@ git clone https://github.com/your-username/DriveXplain.git
 cd DriveXplain
 ```
 
-### 2. Install Dependencies
+### 2. Create conda env 
 
 Install all required Python packages:
 
 ```bash
-pip install -r requirements.txt
+conda env create -f ED.yml
+conda activate temp
 ```
 
 ---

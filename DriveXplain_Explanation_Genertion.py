@@ -245,27 +245,6 @@ Here is the multimodal input for the video:
 - **Optical Flow  Context**  
 {optical_flow[filename]}
 
-These are a few sample explanations provided to illustrate the desired style and level of conciseness. Use them as references to understand the tone, structure, and intention-centric reasoning expected. However, do not replicate them verbatim. Based on the specific input context, generate original explanations that align with this style while adapting appropriately to the scene's content.
-Example 1:
-Label: forward
-Explanation: The vehicle is traveling on a highway and maintains a consistent lane position and speed, suggesting the driver’s intention is to continue along the current route. With no visible disruptions ahead and other cars occupying adjacent lanes, the vehicle appears to be following the traffic flow. The driver's actions reflect a deliberate choice to stay in-lane and avoid unnecessary maneuvers, likely focusing on maintaining pace over long-distance travel.
-
-Example 2:
-Label: right lane change,
-Explanation: The vehicle moves steadily along the highway but gradually shifts to the right lane. This maneuver appears to be a strategic decision to overtake slower-moving vehicles in its current lane or to prepare for an upcoming exit. The presence of multiple vehicles ahead and a clear opening on the right side suggests that the driver is optimizing for smoother flow or aligning with route navigation. The lane markings and consistent forward motion confirm that the change is intentional and controlled.
-
-Example 3:
-Label: left turn,
-Explanation: The vehicle initiates a continuous motion to the left, consistent with a turning maneuver rather than a lane change. The presence of a truck and bus in the surrounding environment suggests an intersection in an urban area with high connectivity. The driver likely intends to exit the current road to access a perpendicular route or destination point. The absence of hesitation or lane boundary markings further supports the intention to make a left turn, rather than repositioning within the same roadway.
-
-Example 4:
-Label: left lane change,
-Explanation: The vehicle shifts leftward within a multi-lane highway, without the curvature or slowing that typically precedes a turn. Given the surrounding traffic and consistent forward motion, this lateral move likely serves to overtake a slower vehicle or align with an exit lane. Trees lining the road and clear lane markers suggest the environment is structured, enabling the driver to anticipate traffic flow and choose the optimal lane. This behavior reflects a deliberate left lane change to maintain speed or route alignment.
-
-Example 5:
-Label: right turn,
-Explanation: As the vehicle approaches an intersection marked by various traffic signals and signage, it executes a turn to the right. The presence of red and yellow traffic lights, as well as a visible stop sign, indicates a controlled intersection. The driver appears to be following a planned route requiring a right turn, possibly to transition onto a smaller road or enter a new traffic corridor. The shift in the orientation of roadside elements, such as trees and signs, confirms a directional change rather than lateral repositioning.
-
 
 Output:
 Label: <one of the 7 maneuver labels>  
@@ -655,28 +634,7 @@ for filename, response in video_responses.items():
     - **Optical Flow  Context**  
     {optical_flow[filename]}
 
-    These are a few sample explanations provided to illustrate the desired style and level of conciseness. Use them as references to understand the tone, structure, and intention-centric reasoning expected. However, do not replicate them verbatim. Based on the specific input context, generate original explanations that align with this style while adapting appropriately to the scene's content
-    Example 1:
-    Label: forward
-    Explanation: The vehicle is traveling on a highway and maintains a consistent lane position and speed, suggesting the driver’s intention is to continue along the current route. With no visible disruptions ahead and other cars occupying adjacent lanes, the vehicle appears to be following the traffic flow. The driver's actions reflect a deliberate choice to stay in-lane and avoid unnecessary maneuvers, likely focusing on maintaining pace over long-distance travel.
-
-    Example 2:
-    Label: right lane change,
-    Explanation: The vehicle moves steadily along the highway but gradually shifts to the right lane. This maneuver appears to be a strategic decision to overtake slower-moving vehicles in its current lane or to prepare for an upcoming exit. The presence of multiple vehicles ahead and a clear opening on the right side suggests that the driver is optimizing for smoother flow or aligning with route navigation. The lane markings and consistent forward motion confirm that the change is intentional and controlled.
-
-    Example 3:
-    Label: left turn,
-    Explanation: The vehicle initiates a continuous motion to the left, consistent with a turning maneuver rather than a lane change. The presence of a truck and bus in the surrounding environment suggests an intersection in an urban area with high connectivity. The driver likely intends to exit the current road to access a perpendicular route or destination point. The absence of hesitation or lane boundary markings further supports the intention to make a left turn, rather than repositioning within the same roadway.
-
-    Example 4:
-    Label: left lane change,
-    Explanation: The vehicle shifts leftward within a multi-lane highway, without the curvature or slowing that typically precedes a turn. Given the surrounding traffic and consistent forward motion, this lateral move likely serves to overtake a slower vehicle or align with an exit lane. Trees lining the road and clear lane markers suggest the environment is structured, enabling the driver to anticipate traffic flow and choose the optimal lane. This behavior reflects a deliberate left lane change to maintain speed or route alignment.
-
-    Example 5:
-    Label: right turn,
-    Explanation: As the vehicle approaches an intersection marked by various traffic signals and signage, it executes a turn to the right. The presence of red and yellow traffic lights, as well as a visible stop sign, indicates a controlled intersection. The driver appears to be following a planned route requiring a right turn, possibly to transition onto a smaller road or enter a new traffic corridor. The shift in the orientation of roadside elements, such as trees and signs, confirms a directional change rather than lateral repositioning.
-
-
+    
     Output:
     Label:
     Explanation1:
