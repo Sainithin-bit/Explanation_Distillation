@@ -6,29 +6,7 @@ Please refer to [INSTALL.md](INSTALL.md) for installation instructions.
 
 ## Use CenterTrack
  
-
-First, download the models (By default, [nuscenes\_3d\_tracking](https://drive.google.com/file/d/1gPQFzqneDtT_PjJRRuyskRsNTRHXovw1) for monocular 3D tracking, [coco_tracking](https://drive.google.com/file/d/11DEfWa0TKYzNqY3CXR51WVvjMb4oRl08) for 80-category detection and 
-[coco_pose_tracking](https://drive.google.com/file/d/1yGFC_Q9wzSHL1d4eZW_44EBB2H42YKYt) for pose tracking) 
-from the [Model zoo](readme/MODEL_ZOO.md) and put them in `CenterNet_ROOT/models/`.
-
-We provide a video clip from the [nuScenes dataset](https://www.nuscenes.org/?externalData=all&mapData=all&modalities=Any) in `videos/nuscenes_mini.mp4`.
-To test monocular 3D tracking on this video, run
-
-~~~
-python demo.py tracking,ddd --load_model ../models/nuScenes_3Dtracking.pth --dataset nuscenes --pre_hm --track_thresh 0.1 --demo ../videos/nuscenes_mini.mp4 --test_focal_length 633
-~~~
-
-You will need to specify `test_focal_length` for monocular 3D tracking demo to convert the image coordinate system back to 3D.
-The value `633` is half of a typical focal length (`~1266`) in nuScenes dataset in input resolution `1600x900`.
-The mini demo video is in an input resolution of `800x448`, so we need to use a half focal length.
-You don't need to set the `test_focal_length` when testing on the original nuScenes data.
-
-If setup correctly, you will see an output video like:
-
-<p align="center"> <img src='readme/nuscenes_3d.gif' align="center" height="230px"> </p>
-
-
-Similarly, for 80-category tracking on images/ video, run:
+We use 80-category tracking on images/ video, run for getting Surrounding_context:
 
 ~~~
 python demo.py tracking --load_model ../models/coco_tracking.pth --demo /path/to/image/or/folder/or/video 
