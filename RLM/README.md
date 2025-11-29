@@ -1,47 +1,7 @@
 # HybridNets: End2End Perception Network
 
+We Use 
 
-
-
-## About The Project
-<!-- #### <div align=center> **HybridNets** = **real-time** :stopwatch: * **state-of-the-art** :1st_place_medal: * (traffic object detection + drivable area segmentation + lane line detection) :motorway: </div> -->
-HybridNets is an end2end perception network for multi-tasks. Our work focused on traffic object detection, drivable area segmentation and lane detection.  HybridNets can run real-time on embedded systems, and obtains SOTA Object Detection, Lane Detection on BDD100K Dataset.
-![intro](images/intro.jpg)  
-
-### Project Structure
-```bash
-HybridNets
-│   backbone.py                   # Model configuration
-|   export.py                     # UPDATED 10/2022: onnx weight with accompanying .npy anchors
-│   hubconf.py                    # Pytorch Hub entrypoint
-│   hybridnets_test.py            # Image inference
-│   hybridnets_test_videos.py     # Video inference
-│   train.py                      # Train script
-│   train_ddp.py                  # DistributedDataParallel training (Multi GPUs)
-│   val.py                        # Validate script
-│   val_ddp.py                    # DistributedDataParralel validating (Multi GPUs)
-│
-├───encoders                      # https://github.com/qubvel/segmentation_models.pytorch/tree/master/segmentation_models_pytorch/encoders
-│       ...
-│
-├───hybridnets
-│       autoanchor.py             # Generate new anchors by k-means
-│       dataset.py                # BDD100K dataset
-│       loss.py                   # Focal, tversky (dice)
-│       model.py                  # Model blocks
-│
-├───projects
-│       bdd100k.yml               # Project configuration
-│
-├───ros                           # C++ ROS Package for path planning
-│       ...
-│
-└───utils
-    |   constants.py
-    │   plot.py                   # Draw bounding box
-    │   smp_metrics.py            # https://github.com/qubvel/segmentation_models.pytorch/blob/master/segmentation_models_pytorch/metrics/functional.py
-    │   utils.py                  # Various helper functions (preprocess, postprocess, eval...)
-```
 
 ## Getting Started [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1dpMrjgJs3qKxaKR833RJDyZTh2O1-Wyn?usp=sharing#forceEdit=true&sandboxMode=true)
 ### Installation
