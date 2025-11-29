@@ -2,7 +2,7 @@
 
 ## Installation
 
-Please refer to [INSTALL.md](Surrounding_context/INSTALL.md) for installation instructions.
+Please refer to [INSTALL.md](INSTALL.md) for installation instructions.
 
 ## Use CenterTrack
 
