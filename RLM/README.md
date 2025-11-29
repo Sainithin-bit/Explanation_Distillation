@@ -1,6 +1,6 @@
 # HybridNets: End2End Perception Network
 
-We Use 
+We use HybridNets to obtain road and lane (RLM) segmentation context. Below are the code changes mentioned to be added in the HybridNets file for getting RLM context in json files.
 
 
 ## Getting Started [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1dpMrjgJs3qKxaKR833RJDyZTh2O1-Wyn?usp=sharing#forceEdit=true&sandboxMode=true)
