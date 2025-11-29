@@ -2,7 +2,7 @@
 
 ## Installation
 
-Please refer to [INSTALL.md](Explanation_Disstillation/Surrounding_context/INSTALL.md) for installation instructions.
+Please refer to [INSTALL.md]([Explanation_Disstillation/Surrounding_context/INSTALL.md](https://github.com/Sainithin-bit/Explanation_Distillation/blob/main/Surrounding_context/INSTALL.md)) for installation instructions.
 
 ## Use CenterTrack
 
