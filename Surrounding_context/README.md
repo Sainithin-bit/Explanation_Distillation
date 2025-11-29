@@ -5,8 +5,7 @@
 Please refer to [INSTALL.md](INSTALL.md) for installation instructions.
 
 ## Use CenterTrack
-
-We support demo for videos, webcam, and image folders. 
+ 
 
 First, download the models (By default, [nuscenes\_3d\_tracking](https://drive.google.com/file/d/1gPQFzqneDtT_PjJRRuyskRsNTRHXovw1) for monocular 3D tracking, [coco_tracking](https://drive.google.com/file/d/11DEfWa0TKYzNqY3CXR51WVvjMb4oRl08) for 80-category detection and 
 [coco_pose_tracking](https://drive.google.com/file/d/1yGFC_Q9wzSHL1d4eZW_44EBB2H42YKYt) for pose tracking) 
