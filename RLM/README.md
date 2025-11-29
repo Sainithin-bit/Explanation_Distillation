@@ -53,7 +53,7 @@ For BDD100K:
 - [da_seg_annot](https://drive.google.com/file/d/1xy_DhUZRHR8yrZG3OwTQAHhYTnXn7URv/view)
 - [ll_seg_annot](https://drive.google.com/file/d/1lDNTPIQj_YLNZVkksKM25CvCHuquJ8AP/view)
 
-### Training
+### Modification of the demo.py file for RLM Context.
 #### 1) Edit or create a new project configuration, using bdd100k.yml as a template. Augmentation params are here.
 ```python
 # mean and std of dataset in RGB order
