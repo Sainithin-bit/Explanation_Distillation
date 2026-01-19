@@ -12,54 +12,6 @@ We use 80-category tracking on images/ video, run for getting Surrounding_contex
 python demo.py tracking --load_model ../models/coco_tracking.pth --demo /path/to/image/or/folder/or/video 
 ~~~
 
-If you want to test with person tracking models, you need to add `--num_class 1`:
-
-~~~
-python demo.py tracking --load_model ../models/mot17_half.pth --num_class 1 --demo /path/to/image/or/folder/or/video 
-~~~
-
-For webcam demo, run     
-
-~~~
-python demo.py tracking --load_model ../models/coco_tracking.pth --demo webcam 
-~~~
-
-For monocular 3D tracking, run 
-
-~~~
-python demo.py tracking,ddd --demo webcam --load_model ../models/coco_tracking.pth --demo /path/to/image/or/folder/or/video/or/webcam 
-~~~
-
-Similarly, for pose tracking, run:
-
-~~~
-python demo.py tracking,multi_pose --load_model ../models/coco_pose.pth --demo /path/to/image/or/folder/or/video/or/webcam 
-~~~
-The result for the example images should look like:
-
-You can add `--debug 2` to visualize the heatmap and offset predictions.
-
-To use this CenterTrack in your own project, you can 
-
-~~~
-import sys
-CENTERTRACK_PATH = /path/to/CenterTrack/src/lib/
-sys.path.insert(0, CENTERTRACK_PATH)
-
-from detector import Detector
-from opts import opts
-
-MODEL_PATH = /path/to/model
-TASK = 'tracking' # or 'tracking,multi_pose' for pose tracking and 'tracking,ddd' for monocular 3d tracking
-opt = opts().init('{} --load_model {}'.format(TASK, MODEL_PATH).split(' '))
-detector = Detector(opt)
-
-images = ['''image read from open cv or from a video''']
-for img in images:
-  ret = detector.run(img)['results']
-~~~
-Each `ret` will be a list dict: `[{'bbox': [x1, y1, x2, y2], 'tracking_id': id, ...}]`
-
 ## Training on custom dataset
 
 If you want to train CenterTrack on your own dataset, you can use `--dataset custom` and manually specify the annotation file, image path, input resolutions, and number of categories. You still need to create the annotation files in COCO format (referring to the many `convert_X_to_coco.py` examples in `tools`). For example, you can use the following command to train on our [mot17 experiment](experiments/mot17_half_sc.sh) without using the pre-defined mot dataset file:

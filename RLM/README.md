@@ -12,46 +12,26 @@ cd HybridNets
 pip install -r requirements.txt
 ```
  
-### Demo
+### Inference on videos
 ```bash
 # Download end-to-end weights
 curl --create-dirs -L -o weights/hybridnets.pth https://github.com/datvuthanh/HybridNets/releases/download/v1.0/hybridnets.pth
 
-# Image inference
-python hybridnets_test.py -w weights/hybridnets.pth --source demo/image --output demo_result --imshow False --imwrite True
-
 # Video inference
-python hybridnets_test_videos.py -w weights/hybridnets.pth --source demo/video --output demo_result
+python hybridnets_test_videos.py -w weights/hybridnets.pth --source demo/daad/video --output demo_result
 
 # Result is saved in a new folder called demo_result
 ```
 
 ## Usage
-### Data Preparation
-Recommended dataset structure:
-```bash
-HybridNets
-└───datasets
-    ├───imgs
-    │   ├───train
-    │   └───val
-    ├───det_annot
-    │   ├───train
-    │   └───val
-    ├───da_seg_annot
-    │   ├───train
-    │   └───val
-    └───ll_seg_annot
-        ├───train
-        └───val
-```
-Update your dataset paths in `projects/your_project_name.yml`.
 
-For BDD100K: 
-- [imgs](https://bdd-data.berkeley.edu/)
-- [det_annot](https://drive.google.com/file/d/1Ge-R8NTxG1eqd4zbryFo-1Uonuh0Nxyl/view)
-- [da_seg_annot](https://drive.google.com/file/d/1xy_DhUZRHR8yrZG3OwTQAHhYTnXn7URv/view)
-- [ll_seg_annot](https://drive.google.com/file/d/1lDNTPIQj_YLNZVkksKM25CvCHuquJ8AP/view)
+### Data Preparation
+
+- Prepare the datasets **DAAD**, **AIDE**, and **Brain4Cars** in three separate folders.
+- Ensure that each dataset follows the required directory structure.
+- Run the provided script after placing the datasets in their respective folders.
+- The script will process the data and generate the corresponding **JSON annotation files** automatically.
+
 
 ### Modification of the demo.py file for RLM Context.
 #### 1) Edit or create a new project configuration, using bdd100k.yml as a template. Augmentation params are here.
